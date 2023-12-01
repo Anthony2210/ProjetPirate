@@ -47,7 +47,7 @@ public class Pecheur extends Bateau {
         }
     }
 
-    private boolean estSurPointPeche() {
+    public boolean estSurPointPeche() {
         if (pointCible == null) {
             return false;
         }
@@ -64,5 +64,8 @@ public class Pecheur extends Bateau {
 
     public PointPeche getCibleActuelle() {
         return cibleActuelle;
+    }
+    public PointPeche getPointCible() {
+        return this.pointCible;
     }
 }

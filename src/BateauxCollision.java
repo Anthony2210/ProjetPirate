@@ -53,7 +53,9 @@ public class BateauxCollision extends JPanel implements ActionListener {
         javax.swing.Timer timer = new javax.swing.Timer(DELAI, this);
         timer.start();
 
-        vitesseSlider = new VitesseSlider(this);
+        this.vitesseSlider = new VitesseSlider(this); // Initialisation de vitesseSlider
+        ControlesVitesseFrame vitesseFrame = new ControlesVitesseFrame(this.vitesseSlider);
+        vitesseFrame.setVisible(true);
 
 
         ImageIcon bateauPIcon = new ImageIcon(getClass().getResource("img/bateauPimage.png"));
@@ -154,7 +156,7 @@ public class BateauxCollision extends JPanel implements ActionListener {
         tousLesBateaux.addAll(bateauxMarine);
         tousLesBateaux.addAll(bateauxPecheurs);
 
-        startBateauTasks();
+
 
 
         if (compteur == 50) { // Apparition des pirates
@@ -167,7 +169,7 @@ public class BateauxCollision extends JPanel implements ActionListener {
             }
         } else if (compteur == 60) { // Apparition des marines
             for (int i = 0; i < NOMBRE_BATEAUX_MARINE; i++) {
-                int x = -LARGEUR_BATEAU; // Juste à gauche de la fenêtre
+                int x = LARGEUR_BATEAU; // Juste à gauche de la fenêtre
                 int y = random.nextInt(HAUTEUR_FENETRE - HAUTEUR_BATEAU);
                 Bateau marine = new Bateau(x, y, LARGEUR_BATEAU, HAUTEUR_BATEAU, bateauMimage);
                 bateauxMarine.add(marine);
@@ -175,77 +177,58 @@ public class BateauxCollision extends JPanel implements ActionListener {
             }
         }
 
-        // Mise à jour des bateaux
-        updatePecheurs();
-        updatePirates();
-        updateMarines();
+        startBateauTasks();
 
-
-        // Gérer les collisions et faire disparaître aléatoirement un des bateaux
-        List<Integer> pirateToKill = new ArrayList<>();
-        List<Integer> marineToKill = new ArrayList<>();
-        for(int i = 0; i<bateauxPirate.size(); i++){
-            Bateau pirate = bateauxPirate.get(i);
-            for(int j = 0; j<bateauxMarine.size(); j++){
-                Bateau marine = bateauxMarine.get(j);
-                if (pirate.seToucheAvec(marine)) {
-                    // Aléatoirement, l'un des deux bateaux disparaît et afficher une explosion
-                    if (random.nextBoolean()) {
-                        bateauxPirate.remove(i);
-                        explosionActive = true;
-                        explosionX = pirate.getX() + (LARGEUR_BATEAU - LARGEUR_BATEAU / 2);
-                        explosionY = pirate.getY() + (HAUTEUR_BATEAU - HAUTEUR_BATEAU / 2);
-                        explosionDebut = System.currentTimeMillis();
-                    } else {
-                        bateauxMarine.remove(j);
-                        // Ajouter l'explosion pour les bateaux marins ici
-                        explosionActive = true;
-                        explosionX = marine.getX() + (LARGEUR_BATEAU - LARGEUR_BATEAU / 2);
-                        explosionY = marine.getY() + (HAUTEUR_BATEAU - HAUTEUR_BATEAU / 2);
-                        explosionDebut = System.currentTimeMillis();
-                    }
-                }
-            }
-        }
-        //kill pirate and marin
-        for(Integer i : pirateToKill){
-            bateauxPirate.remove(i);
-        }
-        for(Integer i : marineToKill){
-            bateauxMarine.remove(i);
-        }
+        gérerCollisions();
 
         repaint();
 
     }
-    private void updatePecheurs() {
-        for (Bateau bateau : bateauxPecheurs) {
-            Pecheur pecheur = (Pecheur) bateau;
-            if (pecheur.getPointCible() == null || !pecheur.estSurPointPeche()) {
-                pecheur.chercherPointPeche();
-                pecheur.deplacerVersPointPeche(getObstacles(pecheur));
-            }
-            pecheur.pecher();
+    private void gérerCollisions() {
+        Random random = new Random();
+
+        for (int i = 0; i < bateauxPirate.size(); i++) {
+            Bateau pirate = bateauxPirate.get(i);
+            vérifierCollisionEtCoulerBateau(pirate, bateauxMarine, random);
+            vérifierCollisionEtCoulerBateau(pirate, bateauxPecheurs, random);
+        }
+
+        for (int i = 0; i < bateauxMarine.size(); i++) {
+            Bateau marine = bateauxMarine.get(i);
+            vérifierCollisionEtCoulerBateau(marine, bateauxPirate, random);
+            vérifierCollisionEtCoulerBateau(marine, bateauxPecheurs, random);
         }
     }
 
-    private void updatePirates() {
-        for (Bateau bateau : bateauxPirate) {
-            Bateau bateauPecheurPlusProche = trouverBateauPlusProche(bateau, bateauxPecheurs);
-            if (bateauPecheurPlusProche != null) {
-                bateau.deplacerVers(bateauPecheurPlusProche, getObstacles(bateau), vitesseSlider.getVitessePirates(), LARGEUR_FENETRE, HAUTEUR_FENETRE, TAILLE_GRILLE, LARGEUR_GRILLE, HAUTEUR_GRILLE);
+    private void vérifierCollisionEtCoulerBateau(Bateau bateau, List<Bateau> autresBateaux, Random random) {
+        for (int j = 0; j < autresBateaux.size(); j++) {
+            Bateau autreBateau = autresBateaux.get(j);
+            if (bateau.seToucheAvec(autreBateau)) {
+                // Déterminer le bateau qui coule
+                Bateau bateauCoulé = autreBateau instanceof Pecheur || random.nextBoolean() ? autreBateau : bateau;
+
+                // Supprimer le bateau coulé de la liste
+                if (bateauCoulé == autreBateau) {
+                    autresBateaux.remove(j);
+                } else {
+                    autresBateaux.remove(bateau);
+                    // Sortie anticipée pour éviter des erreurs d'indexation
+                    break;
+                }
+
+                // Afficher l'explosion à l'emplacement du bateau coulé
+                afficherExplosion(bateauCoulé.getX(), bateauCoulé.getY());
             }
         }
     }
 
-    private void updateMarines() {
-        for (Bateau bateau : bateauxMarine) {
-            Bateau bateauPiratePlusProche = trouverBateauPlusProche(bateau, bateauxPirate);
-            if (bateauPiratePlusProche != null) {
-                bateau.deplacerVers(bateauPiratePlusProche, getObstacles(bateau), vitesseSlider.getVitesseMarine(), LARGEUR_FENETRE, HAUTEUR_FENETRE, TAILLE_GRILLE, LARGEUR_GRILLE, HAUTEUR_GRILLE);
-            }
-        }
+    private void afficherExplosion(int x, int y) {
+        explosionActive = true;
+        explosionX = x;
+        explosionY = y;
+        explosionDebut = System.currentTimeMillis();
     }
+
     /**
      * Trouve le bateau le plus proche du bateau donné dans une liste spécifiée de bateaux.
      *
@@ -270,6 +253,27 @@ public class BateauxCollision extends JPanel implements ActionListener {
 
         return plusProche;
     }
+    public void startBateauTasks() {
+        // Pour chaque pêcheur
+        for (Bateau bateau : bateauxPecheurs) {
+            Pecheur pecheur = (Pecheur) bateau;
+            PointPeche pointPecheProche = pecheur.getPointCible();
+            new BateauTask(bateau, this, pointPecheProche).execute();
+        }
+
+        // Pour chaque pirate
+        for (Bateau bateau : bateauxPirate) {
+            Bateau cible = trouverBateauPlusProche(bateau, bateauxPecheurs);
+            new BateauTask(bateau, this, cible).execute();
+        }
+
+        // Pour chaque marine
+        for (Bateau bateau : bateauxMarine) {
+            Bateau cible = trouverBateauPlusProche(bateau, bateauxPirate);
+            new BateauTask(bateau, this, cible).execute();
+        }
+    }
+
     // Méthode pour obtenir tous les obstacles (bateaux)
     public static List<Bateau> getObstacles(Bateau bateauExclu) {
         List<Bateau> obstacles = new ArrayList<>();
@@ -295,23 +299,8 @@ public class BateauxCollision extends JPanel implements ActionListener {
 
         return obstacles;
     }
-    private void startBateauTasks() {
-        for (Bateau bateau : bateauxPecheurs) {
-            new BateauTask(bateau, this, pointsPeche).execute();
-        }
-        for (Bateau bateau : bateauxPirate) {
-            Bateau cible = trouverBateauPlusProche(bateau, bateauxPecheurs);
-            if (cible != null) {
-                new BateauTask(bateau, this, cible).execute();
-            }
-        }
-        for (Bateau bateau : bateauxMarine) {
-            Bateau cible = trouverBateauPlusProche(bateau, bateauxPirate);
-            if (cible != null) {
-                new BateauTask(bateau, this, cible).execute();
-            }
-        }
-    }
+
+
     public static int getLargeurGrille() {
         return LARGEUR_GRILLE;
     }
@@ -376,18 +365,7 @@ public class BateauxCollision extends JPanel implements ActionListener {
     public List<Bateau> getBateauxPecheurs() {
         return bateauxPecheurs;
     }
-    public void startBateauTasks() {
-        for (Bateau bateau : bateauxPecheurs) {
-            new BateauTask(bateau).execute();
-        }
-        for (Bateau bateau : bateauxPirate) {
-            new BateauTask(bateau).execute();
-        }
-        for (Bateau bateau : bateauxMarine) {
-            new BateauTask(bateau).execute();
-        }
-        // Autres tâches au besoin
-    }
+
 
 
 }

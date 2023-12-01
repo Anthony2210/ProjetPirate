@@ -13,17 +13,29 @@ public class BateauTask extends SwingWorker<Void, Void> {
 
     @Override
     protected Void doInBackground() throws Exception {
-        // Logique de déplacement du bateau en fonction du type de cible
         if (cible instanceof PointPeche) {
-            // Logique pour les pêcheurs se dirigeant vers un point de pêche
+            PointPeche pointPeche = (PointPeche) cible;
+            // Déplacement direct vers le point de pêche
+            bateau.deplacerVersPoint(pointPeche.getX(), pointPeche.getY(), BateauxCollision.getObstacles(bateau), 1, BateauxCollision.LARGEUR_FENETRE, BateauxCollision.HAUTEUR_FENETRE, BateauxCollision.TAILLE_GRILLE, BateauxCollision.LARGEUR_GRILLE, BateauxCollision.HAUTEUR_GRILLE);
         } else if (cible instanceof Bateau) {
-            // Logique pour les pirates ou les marines se dirigeant vers un autre bateau
+            Bateau bateauCible = (Bateau) cible;
+            // Déplacement direct vers le bateau cible
+            bateau.deplacerVers(bateauCible, BateauxCollision.getObstacles(bateau), 1, BateauxCollision.LARGEUR_FENETRE, BateauxCollision.HAUTEUR_FENETRE, BateauxCollision.TAILLE_GRILLE, BateauxCollision.LARGEUR_GRILLE, BateauxCollision.HAUTEUR_GRILLE);
+        } else {
+            // Aucune cible spécifique, se déplacer vers le centre de la carte
+            int centreX = BateauxCollision.LARGEUR_FENETRE / 2;
+            int centreY = BateauxCollision.HAUTEUR_FENETRE / 2;
+            bateau.deplacerVersPoint(centreX, centreY, BateauxCollision.getObstacles(bateau), 1, BateauxCollision.LARGEUR_FENETRE, BateauxCollision.HAUTEUR_FENETRE, BateauxCollision.TAILLE_GRILLE, BateauxCollision.LARGEUR_GRILLE, BateauxCollision.HAUTEUR_GRILLE);
         }
         return null;
     }
 
+
     @Override
     protected void done() {
-        bateauxCollision.repaint();
+        // Assurez-vous que cette mise à jour se fait sur l'EDT
+        SwingUtilities.invokeLater(() -> {
+            bateauxCollision.repaint();
+        });
     }
 }
